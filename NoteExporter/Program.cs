@@ -5,9 +5,10 @@ using System.Linq;
 using System.Text;
 using OpenUtau.Classic;
 using OpenUtau.Core;
-using OpenUtau.Core.Ustx;
 using OpenUtau.Core.Format;
 using OpenUtau.Core.Render;
+using OpenUtau.Core.Ustx;
+using OpenUtau.Core.Util;
 using Serilog;
 
 namespace NoteExporter {
@@ -27,6 +28,12 @@ namespace NoteExporter {
 
             Init();
             var project = LoadProject(path);
+            try {
+                CheckEnvironment(project);
+            } catch (InvalidOperationException err) {
+                Console.Error.WriteLine(err.Message);
+                return 1;
+            }
             var renderResults = Render(project);
             var exportDir = GetExportDirectory(path);
             WriteResults(renderResults, exportDir);
@@ -36,12 +43,42 @@ namespace NoteExporter {
         private static void Init() {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             Directory.CreateDirectory(PathManager.Inst.CachePath);
-            Resamplers.Search();
+            SearchResamplers();
             DocManager.Inst.Initialize();
+        }
+
+        private static void SearchResamplers() {
+            var resampler = Preferences.Default.Resampler;
+            Resamplers.Search();
+            // Reset the preference tampered with by `Resamplers.Search()`
+            Preferences.Default.Resampler = resampler;
+            Preferences.Save();
         }
 
         private static UProject LoadProject(string path) {
             return Ustx.Load(path);
+        }
+
+        private static void CheckEnvironment(UProject project) {
+            CheckSinger(project);
+            CheckResampler(project);
+        }
+
+        private static void CheckSinger(UProject project) {
+            var tracks = project.tracks;
+            foreach (var track in tracks) {
+                if (!track.Singer.Found) {
+                    throw new InvalidOperationException($"Singer \"{track.Singer}\" not found");
+                }
+            }
+        }
+
+        private static void CheckResampler(UProject project) {
+            // TODO: Also check resamplers in expressions
+            var resampler = Preferences.Default.Resampler;
+            if (Resamplers.GetResampler(resampler) == null) {
+                throw new InvalidOperationException($"Resampler \"{resampler}\" not found");
+            }
         }
 
         private static List<NoteResult> Render(UProject project) {
@@ -96,7 +133,9 @@ namespace NoteExporter {
                 var exportPath = Path.Join(directory, result.ToString());
                 try {
                     File.Copy(result.FilePath, exportPath, true);
-                } catch (SystemException err) {
+                } catch (IOException err) {
+                    Console.Error.WriteLine($"Error writing {exportPath}: {err.Message}");
+                } catch (UnauthorizedAccessException err) {
                     Console.Error.WriteLine($"Error writing {exportPath}: {err.Message}");
                 }
             }
