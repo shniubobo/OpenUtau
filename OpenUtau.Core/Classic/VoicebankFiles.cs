@@ -9,7 +9,7 @@ using OpenUtau.Core.Ustx;
 using Serilog;
 
 namespace OpenUtau.Classic {
-    static class VoicebankFiles {
+    public static class VoicebankFiles {
 
         static object fileAccessLock = new object();
 
