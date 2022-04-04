@@ -34,7 +34,7 @@ namespace NoteExporter {
                 Console.Error.WriteLine(err.Message);
                 return 1;
             }
-            var renderResults = Render(project);
+            var renderResults = Resample(project);
             var exportDir = GetExportDirectory(path);
             WriteResults(renderResults, exportDir);
             return 0;
@@ -81,13 +81,13 @@ namespace NoteExporter {
             }
         }
 
-        private static List<NoteResult> Render(UProject project) {
+        private static List<NoteResult> Resample(UProject project) {
             var phrases = GetPhrases(project);
             var resamplerItems = GetResamplerItems(phrases);
             var results = new List<NoteResult>();
             foreach (var item in resamplerItems) {
                 VoicebankFiles.CopySourceTemp(item.inputFile, item.inputTemp);
-                Console.WriteLine($"Rendering position {item.phone.position}: {item.phone.phoneme}");
+                Console.WriteLine($"Resampling position {item.phone.position}: {item.phone.phoneme}");
                 var file = item.resampler.DoResamplerReturnsFile(item, Log.Logger);
                 if (!File.Exists(item.outputFile)) {
                     throw new InvalidDataException($"{item.resampler.Name} failed to resample \"{item.phone.phoneme}\"");
