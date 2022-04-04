@@ -93,7 +93,7 @@ namespace NoteExporter {
                     throw new InvalidDataException($"{item.resampler.Name} failed to resample \"{item.phone.phoneme}\"");
                 }
                 VoicebankFiles.CopyBackMetaFiles(item.inputFile, item.inputTemp);
-                results.Add(new NoteResult(item.phone, file));
+                results.Add(new NoteResult(project, item, file));
             }
             return results;
         }
@@ -144,18 +144,20 @@ namespace NoteExporter {
 
     internal class NoteResult {
         public int PreUtterTick { get; private set; }
+        public int SkipOverTick { get; private set; }
         public int PositionTick { get; private set; }
         public string Phoneme { get;  private set; }
         public string FilePath { get;  private set; }
 
-        public NoteResult(RenderPhone phone, string file) {
-            PreUtterTick = phone.leading;
-            PositionTick = phone.position;
-            Phoneme = phone.phoneme;
+        public NoteResult(UProject project, ResamplerItem item, string file) {
+            PreUtterTick = item.phone.leading;
+            SkipOverTick = project.MillisecondToTick(item.skipOver);
+            PositionTick = item.phone.position;
+            Phoneme = item.phone.phoneme;
             FilePath = file;
         }
 
         public override string ToString()
-            => string.Format("{0:D6}_{1:D6}_{2}.wav", PositionTick, PreUtterTick, Phoneme);
+            => string.Format("{0:D6}_{1:D6}_{2:D6}_{3}.wav", PositionTick, PreUtterTick, SkipOverTick, Phoneme);
     }
 }
